@@ -1,0 +1,75 @@
+---
+title: "Endpoint reference"
+description: "The four public SEO endpoints the SDK calls: URLs, response shapes, caching, and status codes."
+icon: "globe"
+---
+
+The SDK is a thin client over four public, token-scoped endpoints. You can call them directly from any stack — they're plain HTTPS GET, no auth headers.
+
+Base URL: `https://api.useagentshop.com/api/shopify/seo/public`
+Token: your store's pixel token (`{token}` below) from **SEO → Headless Setup**.
+
+## Endpoints
+
+### `GET {base}/{token}/product/{handle}`
+
+Returns the product `SeoBundle` for a product handle (URL-encoded).
+
+### `GET {base}/{token}/collection/{handle}`
+
+Returns the collection `SeoBundle`. Same shape as a product bundle; `openGraph.type` is `"website"`.
+
+### `GET {base}/{token}/site.json`
+
+Returns the `SeoSiteBundle` — `{ jsonLd }` only, the site-level `Organization` + `WebSite` (+ `FAQPage`) graph.
+
+### `GET {base}/{token}/sitemap.xml`
+
+Returns the product sitemap as XML (`application/xml`).
+
+## Response shape (`SeoBundle`)
+
+<ResponseField name="jsonLd" type="object" required>
+  The schema.org JSON-LD graph, e.g. `{ "@context": "https://schema.org", "@graph": [Product, BreadcrumbList] }`. Serialize with `serializeJsonLd` before embedding — see [Security](/sdk/security).
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  The page title, from your Shopify SEO fields.
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  The meta description.
+</ResponseField>
+
+<ResponseField name="canonical" type="string" required>
+  The canonical URL for the page.
+</ResponseField>
+
+<ResponseField name="openGraph" type="object" required>
+  `{ title, description, type: "product" | "website", url, siteName?, image? }`
+</ResponseField>
+
+<ResponseField name="twitter" type="object" required>
+  `{ card: "summary" | "summary_large_image", title, description, image? }`
+</ResponseField>
+
+## Caching
+
+All responses are served with:
+
+```
+Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+X-Cache: HIT | MISS
+```
+
+Cached for 1 hour at the CDN, served stale for up to 24 hours while revalidating. `X-Cache` tells you whether the response came from cache.
+
+## Status codes
+
+| Code | Meaning |
+|---|---|
+| `200` | Bundle / XML returned |
+| `404` | Unknown token, or unknown product/collection handle |
+| `502` | Upstream failure generating the bundle |
+
+The SDK treats any non-2xx as a `null` bundle (see the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract)); if you call the endpoints directly, handle 404/502 the same way — render the page without SEO tags.

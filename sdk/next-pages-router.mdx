@@ -1,0 +1,54 @@
+---
+title: "Next.js Pages Router"
+description: "Integrate product SEO and a sitemap with @agentshop/seo/next/pages."
+icon: "square-n"
+---
+
+The Pages Router adapter covers **product pages and the sitemap**. (Collection and site-level helpers are currently App Router only — use the [core fetch helpers](/sdk/reference/core) if you need them here.) Import from `@agentshop/seo/next/pages`.
+
+## Product pages
+
+Fetch the bundle in `getServerSideProps`, render it with `<ProductHead>`:
+
+```tsx pages/products/[handle].tsx
+import { getProductSeoProps, ProductHead } from "@agentshop/seo/next/pages";
+import type { SeoBundle } from "@agentshop/seo";
+
+export const getServerSideProps = (ctx) => getProductSeoProps(ctx);
+
+export default function ProductPage({ seo }: { seo: SeoBundle | null }) {
+  return (
+    <>
+      <ProductHead seo={seo} />
+      <main>{/* …your product UI… */}</main>
+    </>
+  );
+}
+```
+
+- `getProductSeoProps(ctx, config?)` reads `ctx.params.handle` and returns `{ props: { seo: SeoBundle | null } }`. Merge it into your own props if you already have a `getServerSideProps`.
+- `<ProductHead seo />` renders everything into `next/head`: title, description, canonical, Open Graph (including `og:type=product` — unlike the App Router, raw meta tags accept it), Twitter tags, and the escaped JSON-LD script. With `seo={null}` it renders nothing.
+
+## Sitemap
+
+```ts pages/sitemap.xml.ts
+import { productSitemapHandler } from "@agentshop/seo/next/pages";
+
+export default productSitemapHandler();
+
+export const getServerSideProps = undefined;
+```
+
+Wire it as an API route instead if you prefer:
+
+```ts pages/api/sitemap.xml.ts
+import { productSitemapHandler } from "@agentshop/seo/next/pages";
+
+export default productSitemapHandler();
+```
+
+The handler sets `Content-Type: application/xml; charset=utf-8` and `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`, and responds 200 with the XML or 502 with an empty body when unavailable.
+
+## Configuration
+
+Both helpers accept an optional [`SeoClientConfig`](/sdk/reference/config) as their last argument; environment variables `AGENTSHOP_TOKEN` and `AGENTSHOP_SEO_URL` fill anything you don't pass. All helpers follow the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract).

@@ -1,0 +1,67 @@
+---
+title: "Concepts"
+description: "Bundles, the store token, caching, and the never-throw contract."
+icon: "lightbulb"
+---
+
+## Bundles
+
+The SDK works with two bundle shapes, both plain JSON returned by the AgentShop SEO endpoint:
+
+**`SeoBundle`** — returned for products and collections. Contains everything a page needs:
+
+```ts
+{
+  jsonLd: unknown;        // schema.org JSON-LD graph (plain object)
+  title: string;
+  description: string;
+  canonical: string;
+  openGraph: SeoOpenGraph; // og:type is "product" for products, "website" for collections
+  twitter: SeoTwitter;
+}
+```
+
+**`SeoSiteBundle`** — returned by the site endpoint. Contains only `{ jsonLd }`: the site-level `Organization` + `WebSite` (+ `FAQPage`) graph. It deliberately has no title/meta — your home page owns its own meta tags.
+
+See the [core API reference](/sdk/reference/core) for the full type shapes.
+
+## The store token
+
+Every request is scoped by your store token (also called the pixel token), found in the dashboard under **SEO → Headless Setup**.
+
+- It is **public by design**: read-only, scoped to one store's SEO data, safe to ship in storefront code and environment variables.
+- It is **not** your `ask_` account API key. The account API key grants account-level access and must stay server-side, out of storefront code entirely. When in doubt: the SDK only ever takes the store token.
+
+## Caching
+
+Two layers of caching keep the endpoint off your critical path:
+
+1. **Endpoint CDN**: responses are served with `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` — cached for 1 hour, served stale for up to 24 hours while revalidating. The `X-Cache: HIT|MISS` response header tells you which happened.
+2. **Framework cache**: the Next.js helpers additionally wrap every fetch with `{ next: { revalidate: 3600 } }` (ISR, 1 hour) by default.
+
+Override the framework layer via `fetchOptions`:
+
+```ts
+createProductMetadata({ fetchOptions: { next: { revalidate: 60 } } });
+```
+
+## Graceful degradation (the never-throw contract)
+
+Every fetch helper returns `null` on **any** failure — missing configuration, bad token, 404, timeout, network error. Components render nothing, metadata helpers return an empty object, and your page ships without SEO tags rather than crashing.
+
+- A missing base URL logs a single `console.warn` (once per process) and skips tags.
+- A misconfigured store renders perfectly fine — pages return 200, just without SEO tags. The only exception is the sitemap route, which returns a 502 with an empty body when the bundle is unavailable (a sitemap must be real XML or an error).
+- If you want loud failures instead — for example in a health check — call `resolveConfig(cfg)`, the throwing validation variant.
+
+## Where each artifact goes
+
+| Artifact | Where | Helper |
+|---|---|---|
+| Product meta + JSON-LD | `app/products/[handle]/page.tsx` | `createProductMetadata` + `<ProductJsonLd>` |
+| Collection meta + JSON-LD | `app/collections/[handle]/page.tsx` | `createCollectionMetadata` + `<CollectionJsonLd>` |
+| Site-level JSON-LD | Home page **only** (`app/page.tsx`) | `<SiteJsonLd>` |
+| Sitemap | `app/sitemap.xml/route.ts` | `productSitemapRoute` |
+
+<Warning>
+  Inject `<SiteJsonLd>` exactly once, on the home page. Google discourages repeating the same `FAQPage`/site graph across many pages.
+</Warning>

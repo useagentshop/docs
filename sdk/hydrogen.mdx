@@ -1,0 +1,56 @@
+---
+title: "Hydrogen (Oxygen)"
+description: "Integrate product SEO and a sitemap on Shopify Hydrogen with @agentshop/seo/hydrogen."
+icon: "bolt"
+---
+
+The Hydrogen adapter covers **product pages and the sitemap** for Hydrogen storefronts on Oxygen. (Collection and site-level helpers are currently App Router only — use the [core fetch helpers](/sdk/reference/core) with an explicit config if you need them here.) Import from `@agentshop/seo/hydrogen`.
+
+<Warning>
+  Oxygen (workerd) has **no `process.env`** — environment variables only exist on `context.env`. That's why this adapter exists: its helpers take the Oxygen `context` and resolve `AGENTSHOP_TOKEN` / `AGENTSHOP_SEO_URL` from `context.env` automatically. Any custom integration code you write on Oxygen must read from `context.env` too, never `process.env`.
+</Warning>
+
+## Setup
+
+Add both variables to your storefront environment (Shopify admin → Hydrogen storefront → environment variables, and `.env` for local `shopify hydrogen dev`):
+
+```bash
+AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/shopify/seo/public
+AGENTSHOP_TOKEN=<your store token from Dashboard → SEO → Headless Setup>
+```
+
+## Product routes
+
+```tsx app/routes/products.$handle.tsx
+import { loadProductSeo, agentshopProductMeta } from "@agentshop/seo/hydrogen";
+
+export async function loader({ params, context }) {
+  const seo = await loadProductSeo(context, params.handle!);
+  // merge with your own loader data:
+  return { ...seo /*, product, … */ };
+}
+
+export const meta = agentshopProductMeta;
+```
+
+- `loadProductSeo(context, handle, config?)` — note the Oxygen `context` comes **first**. Returns `{ agentshopSeo: SeoBundle | null }`; spread it into your loader data under that exact key. An explicit `config` wins over `context.env`.
+- `agentshopProductMeta(args)` is identical to the Remix version: a v2 `meta` function reading `data.agentshopSeo`, emitting title, description, canonical, Open Graph (including `og:type=product`), Twitter tags, and JSON-LD via `"script:ld+json"`. Returns an empty array when the bundle is `null`.
+
+## Sitemap
+
+```ts app/routes/[sitemap.xml].ts
+import { productSitemapLoader } from "@agentshop/seo/hydrogen";
+
+export const loader = productSitemapLoader();
+```
+
+Unlike the Remix version, this loader reads `args.context` to resolve your environment — no config needed. It returns 200 XML with `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`, or 502 with an empty body when unavailable.
+
+## Troubleshooting: works locally, empty on Oxygen
+
+This is almost always environment resolution. Check that:
+
+1. `AGENTSHOP_TOKEN` and `AGENTSHOP_SEO_URL` are set on the **Hydrogen storefront environment** (not just your local `.env`).
+2. No custom code reads `process.env` — on Oxygen it doesn't exist.
+
+All helpers follow the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract): misconfiguration means missing tags, never a crash.

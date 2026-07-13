@@ -1,0 +1,68 @@
+---
+title: "Headless SEO SDK"
+sidebarTitle: "Overview"
+description: "Server-rendered JSON-LD, meta, Open Graph, and sitemaps for headless Shopify storefronts — Next.js, Remix, and Hydrogen."
+icon: "sparkles"
+---
+
+`@agentshop/seo` puts your AgentShop-generated SEO into the initial HTML of your headless storefront: structured data (JSON-LD), title and meta description, Open Graph and Twitter tags, and a product sitemap.
+
+```bash
+npm install @agentshop/seo
+```
+
+## Why server-side rendering matters
+
+AI crawlers — GPTBot, ClaudeBot, PerplexityBot — do not execute JavaScript. If your tags are injected client-side, these crawlers never see them. The same is true for most social scrapers and some search crawlers. The SDK fetches your SEO bundle on the server and renders it into the initial HTML, so every crawler sees complete metadata on the first request.
+
+## How it works
+
+Your storefront calls the AgentShop SEO endpoint at render time, authenticated by your store token, and receives a ready-to-render bundle. Responses are CDN-cached, and the SDK adds framework-level caching on top, so the endpoint adds negligible latency to your pages.
+
+```
+Your storefront (SSR) → AgentShop SEO endpoint (token-scoped, CDN-cached) → tags in initial HTML
+```
+
+If the endpoint is ever unreachable or misconfigured, every helper returns `null` and your page renders without SEO tags — never a 500. See [Concepts](/sdk/concepts) for the full graceful-degradation contract.
+
+## What you get
+
+Measured on a real store, before and after adding the SDK to a fresh Next.js app:
+
+| | Before | After |
+|---|---|---|
+| Product `<title>` | app name | `Creatine for Women + Hydration \| Mendi Strong Powder` |
+| Canonical / meta description | none | real values from your Shopify SEO fields |
+| Open Graph / Twitter tags | 0 / 0 | 5 / 4 |
+| JSON-LD | none | `Product` + `BreadcrumbList` (~2.2 KB, valid) |
+| Collection page | bare | `CollectionPage` + `ItemList` + breadcrumb |
+| Home page | bare | `Organization` + `WebSite` (+ `FAQPage` when your store has published FAQs) |
+| `/sitemap.xml` | 502 | 200, valid XML |
+
+## Supported frameworks
+
+| Framework | Product meta + JSON-LD | Collection | Site-level JSON-LD | Sitemap |
+|---|---|---|---|---|
+| Next.js App Router (`/next`) | ✅ | ✅ | ✅ | ✅ |
+| Next.js Pages Router (`/next/pages`) | ✅ | — | — | ✅ |
+| Remix (`/remix`) | ✅ | — | — | ✅ |
+| Hydrogen / Oxygen (`/hydrogen`) | ✅ | — | — | ✅ |
+
+The core package (`@agentshop/seo`) exposes the raw fetch helpers for any other server-rendered stack — collection and site bundles included. The package is ESM-only and requires Node 18 or later; all peer dependencies are optional, so installing it never pulls in a framework you don't use.
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/sdk/quickstart">
+    Product SEO on a Next.js App Router storefront in four steps.
+  </Card>
+  <Card title="Concepts" icon="lightbulb" href="/sdk/concepts">
+    Bundles, the store token, caching, and graceful degradation.
+  </Card>
+  <Card title="Framework guides" icon="layer-group" href="/sdk/next-app-router">
+    Next.js, Remix, and Hydrogen integration guides.
+  </Card>
+  <Card title="API reference" icon="code" href="/sdk/reference/config">
+    Configuration, core API, and endpoint reference.
+  </Card>
+</Columns>

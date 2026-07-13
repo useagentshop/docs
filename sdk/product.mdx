@@ -1,0 +1,92 @@
+---
+title: "Product JSON-LD"
+description: "What the product structured data contains and how to render it in each framework."
+icon: "tag"
+---
+
+Product pages get a schema.org graph containing:
+
+- **`Product`** (or **`ProductGroup`** with `hasVariant` for multi-variant products) — name, description, images, brand, and an **`Offer`** with price, currency, and availability from your live Shopify data.
+- **`BreadcrumbList`** — store → collection → product trail.
+
+A typical rendered block is ~2.2 KB of valid JSON-LD, served from your Shopify SEO fields and product data. Multi-variant products are modeled the schema.org way: one `ProductGroup` with each variant as a `Product` under `hasVariant`, each carrying its own offer.
+
+## Rendering it
+
+<Tabs>
+  <Tab title="Next.js App Router">
+    ```tsx app/products/[handle]/page.tsx
+    import { createProductMetadata, ProductJsonLd } from "@agentshop/seo/next";
+
+    export const generateMetadata = createProductMetadata();
+
+    export default function Page({ params }: { params: { handle: string } }) {
+      return (
+        <main>
+          <ProductJsonLd handle={params.handle} />
+        </main>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Next.js Pages Router">
+    ```tsx pages/products/[handle].tsx
+    import { getProductSeoProps, ProductHead } from "@agentshop/seo/next/pages";
+
+    export const getServerSideProps = (ctx) => getProductSeoProps(ctx);
+
+    export default function ProductPage({ seo }) {
+      return (
+        <>
+          <ProductHead seo={seo} />
+          <main>{/* … */}</main>
+        </>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="Remix">
+    ```tsx app/routes/products.$handle.tsx
+    import { loadProductSeo, agentshopProductMeta } from "@agentshop/seo/remix";
+
+    export async function loader({ params }) {
+      return await loadProductSeo(params.handle!);
+    }
+
+    export const meta = agentshopProductMeta;
+    ```
+  </Tab>
+  <Tab title="Hydrogen">
+    ```tsx app/routes/products.$handle.tsx
+    import { loadProductSeo, agentshopProductMeta } from "@agentshop/seo/hydrogen";
+
+    export async function loader({ params, context }) {
+      return await loadProductSeo(context, params.handle!);
+    }
+
+    export const meta = agentshopProductMeta;
+    ```
+  </Tab>
+</Tabs>
+
+## The meta tags that come with it
+
+Alongside the JSON-LD, the product bundle carries the page's title, meta description, canonical URL, Open Graph, and Twitter card tags — all rendered by the same helpers.
+
+<Warning>
+  **`og:type` on the App Router**: Next's typed `Metadata` union doesn't accept `"product"` and throws at runtime, so the App Router adapter deliberately omits `og:type`. Every other Open Graph tag renders normally. The Pages Router, Remix, and Hydrogen adapters emit `og:type=product` (raw meta tags accept it).
+</Warning>
+
+## Custom integrations
+
+If you're not using a shipped adapter, fetch the bundle and render it yourself:
+
+```ts
+import { fetchProductBundle, serializeJsonLd } from "@agentshop/seo";
+
+const seo = await fetchProductBundle(handle);
+// NEVER JSON.stringify straight into a <script> — use serializeJsonLd:
+const html = `<script type="application/ld+json">${serializeJsonLd(seo?.jsonLd)}</script>`;
+```
+
+See [Security](/sdk/security) for why `serializeJsonLd` is mandatory here.

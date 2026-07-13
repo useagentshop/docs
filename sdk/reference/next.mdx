@@ -1,0 +1,108 @@
+---
+title: "Next.js API"
+description: "Exact exports of @agentshop/seo/next (App Router) and @agentshop/seo/next/pages (Pages Router)."
+icon: "square-n"
+---
+
+## `@agentshop/seo/next` (App Router)
+
+All App Router helpers default to ISR caching (`{ next: { revalidate: 3600 } }`), overridable via `config.fetchOptions`. Metadata helpers support Next 14 (sync `params`) and Next 15/16 (Promise `params`).
+
+### Metadata
+
+```ts
+function generateProductMetadata(
+  args: { params: { handle: string } | Promise<{ handle: string }> },
+  config?: SeoClientConfig,
+): Promise<Metadata>
+```
+
+Ready `generateMetadata` for `app/products/[handle]/page.tsx`:
+
+```ts
+export const generateMetadata = generateProductMetadata;
+```
+
+```ts
+function createProductMetadata(config?: SeoClientConfig):
+  (args: { params: { handle: string } | Promise<{ handle: string }> }) => Promise<Metadata>
+```
+
+Factory for a configured `generateMetadata`. Use this whenever you pass config — it avoids the positional-argument collision with Next's `generateMetadata(props, parent)` call signature.
+
+```ts
+function generateCollectionMetadata(args, config?): Promise<Metadata>
+function createCollectionMetadata(config?): (args) => Promise<Metadata>
+```
+
+Collection equivalents, same signatures and behavior.
+
+<Note>
+  All App Router metadata omits `og:type` — `"product"` isn't in Next's typed `Metadata` union and throws at runtime. All other Open Graph tags render with `property="og:*"`.
+</Note>
+
+### Components
+
+```tsx
+async function ProductJsonLd(props: { handle: string; config?: SeoClientConfig })
+async function CollectionJsonLd(props: { handle: string; config?: SeoClientConfig })
+async function SiteJsonLd(props?: { config?: SeoClientConfig })
+```
+
+Async **server components**. Each renders an escaped `<script type="application/ld+json">`, or `null` when the bundle is unavailable. `SiteJsonLd` belongs on the home page only.
+
+### Routes
+
+```ts
+function productSitemapRoute(config?: SeoClientConfig): { GET: () => Promise<Response> }
+```
+
+Route-handler factory for `app/sitemap.xml/route.ts`:
+
+```ts
+export const { GET } = productSitemapRoute();
+```
+
+Responds 200 XML or 502 empty. Sets `Content-Type: application/xml; charset=utf-8` (no `Cache-Control` header — caching is via ISR).
+
+### Re-exports
+
+```ts
+function toNextMetadata(seo: SeoBundle | null | undefined): Metadata
+```
+
+The bundle → `Metadata` mapper, for wiring metadata yourself — see [Core API](/sdk/reference/core#meta-builders).
+
+## `@agentshop/seo/next/pages` (Pages Router)
+
+```ts
+function getProductSeoProps(
+  ctx: { params?: { handle?: string | string[] } },
+  config?: SeoClientConfig,
+): Promise<{ props: { seo: SeoBundle | null } }>
+```
+
+`getServerSideProps` helper — reads the handle from route params and returns the bundle as a `seo` prop.
+
+```tsx
+function ProductHead(props: { seo: SeoBundle | null })
+```
+
+Renders the full tag set into `next/head`: title, description, canonical, Open Graph (**including** `og:type=product` — raw meta accepts it), Twitter, and the escaped JSON-LD script. Renders nothing for `null`.
+
+```ts
+function productSitemapHandler(config?: SeoClientConfig):
+  (req: unknown, res: ApiResponseLike) => Promise<void>
+```
+
+Handler factory for `pages/sitemap.xml.ts` or an API route:
+
+```ts
+export default productSitemapHandler();
+```
+
+Responds 200 XML or 502 empty; sets `Content-Type: application/xml; charset=utf-8` and `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`.
+
+## Remix and Hydrogen exports
+
+Documented in their framework guides: [Remix](/sdk/remix) (`loadProductSeo(handle, config?)`, `agentshopProductMeta`, `productSitemapLoader`) and [Hydrogen](/sdk/hydrogen) (same names, but `loadProductSeo(context, handle, config?)` and a context-aware sitemap loader).
