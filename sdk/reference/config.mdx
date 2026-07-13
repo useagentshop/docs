@@ -1,0 +1,62 @@
+---
+title: "Configuration"
+description: "SeoClientConfig options, environment fallbacks, and defaults."
+icon: "gear"
+---
+
+Every fetch helper, component, factory, and route in the SDK accepts an optional `SeoClientConfig`. Anything you don't pass falls back to environment variables.
+
+```ts
+interface SeoClientConfig {
+  token?: string;
+  baseUrl?: string;
+  timeoutMs?: number;
+  fetchOptions?: Record<string, unknown>;
+}
+```
+
+<ResponseField name="token" type="string">
+  Your store's pixel token from the dashboard under **SEO → Headless Setup**. Falls back to `process.env.AGENTSHOP_TOKEN` (on Hydrogen/Oxygen: `context.env.AGENTSHOP_TOKEN`, resolved by the adapter). This is **not** the `ask_` account API key — see [Security](/sdk/security).
+</ResponseField>
+
+<ResponseField name="baseUrl" type="string">
+  Base URL of the AgentShop SEO endpoint, e.g. `https://api.useagentshop.com/api/shopify/seo/public`. Falls back to `process.env.AGENTSHOP_SEO_URL` (Hydrogen: `context.env`). Trailing slashes are stripped.
+</ResponseField>
+
+<ResponseField name="timeoutMs" type="number" default="3000">
+  Per-request fetch timeout in milliseconds, applied via `AbortSignal.timeout` (feature-detected). The 3-second default suits the warm CDN-cached endpoint; raise it (e.g. `15000`) when testing against a cold or local backend.
+</ResponseField>
+
+<ResponseField name="fetchOptions" type="Record<string, unknown>">
+  Extra options merged into the underlying `fetch` call. The main use is framework caching, e.g. Next.js ISR: `{ next: { revalidate: 60 } }`. The Next.js helpers already default this to `{ next: { revalidate: 3600 } }`; anything you pass here overrides it.
+</ResponseField>
+
+## Environment variables
+
+```bash
+AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/shopify/seo/public
+AGENTSHOP_TOKEN=<your store token>
+```
+
+Set both locally **and** on your deploy platform (Vercel, Oxygen storefront environment, etc.) — "works locally, empty in production" is almost always a missing deploy-time variable.
+
+## Failure behavior
+
+The fetch helpers never throw. On any failure — missing config, bad token, 404, timeout, network error — they return `null`, and a missing base URL logs a single warning:
+
+```
+[@agentshop/seo] Missing base URL — set AGENTSHOP_SEO_URL or pass { baseUrl }. SEO tags will be skipped.
+```
+
+### `resolveConfig`
+
+```ts
+function resolveConfig(cfg?: SeoClientConfig): {
+  token: string;
+  baseUrl: string;
+  timeoutMs: number;
+  fetchOptions: Record<string, unknown>;
+}
+```
+
+The throwing variant, for callers that want explicit validation (startup checks, health endpoints). Throws with a descriptive message when the base URL is missing; the fetch helpers use the non-throwing path internally.

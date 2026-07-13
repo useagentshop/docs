@@ -1,0 +1,107 @@
+---
+title: "Core API"
+description: "Framework-agnostic fetch helpers, meta builders, serialization, and types from @agentshop/seo."
+icon: "code"
+---
+
+The core entry point (`@agentshop/seo`) has zero runtime dependencies and works in any server environment with global `fetch` (Node ≥ 18, edge runtimes, workerd). All fetch helpers follow the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract): `null` on any failure, never an exception.
+
+## Fetch helpers
+
+```ts
+function fetchProductBundle(handle: string, cfg?: SeoClientConfig): Promise<SeoBundle | null>
+```
+
+Fetches the product bundle for a product handle.
+
+```ts
+function fetchCollectionBundle(handle: string, cfg?: SeoClientConfig): Promise<SeoBundle | null>
+```
+
+Fetches the collection bundle. Structurally identical to a product bundle; `openGraph.type` is `"website"`.
+
+```ts
+function fetchSiteBundle(cfg?: SeoClientConfig): Promise<SeoSiteBundle | null>
+```
+
+Fetches the site-level JSON-LD graph (`Organization` + `WebSite` + optional `FAQPage`).
+
+```ts
+function fetchSitemapXml(cfg?: SeoClientConfig): Promise<string | null>
+```
+
+Fetches the product sitemap as an XML string.
+
+## Meta builders
+
+```ts
+function buildProductMetaDescriptors(seo: SeoBundle | null | undefined): MetaDescriptor[]
+```
+
+Builds the Remix/Hydrogen v2 `meta` descriptor array from a bundle: title, description, canonical, Open Graph (including `og:type=product`), Twitter tags, and the JSON-LD via a `"script:ld+json"` descriptor. Returns `[]` for a `null` bundle.
+
+```ts
+function toNextMetadata(seo: SeoBundle | null | undefined): Metadata
+```
+
+Maps a bundle to a Next.js `Metadata` object. `og:type: "product"` is deliberately omitted — it isn't in Next's `OpenGraph` type union and throws at runtime — but the remaining Open Graph tags still render with `property="og:*"`. (Also re-exported from `@agentshop/seo/next`.)
+
+## Serialization
+
+```ts
+function serializeJsonLd(jsonLd: unknown): string
+```
+
+Serializes JSON-LD for embedding inside a `<script type="application/ld+json">` tag, escaping every `<` to its JSON unicode form (`\u003c`) so a data field containing `</script>` (product titles, vendor names, FAQ answers…) can't break out of the script block. The result is still valid JSON. **Always use this instead of `JSON.stringify` when writing your own script tags** — see [Security](/sdk/security).
+
+## Validation
+
+```ts
+function resolveConfig(cfg?: SeoClientConfig): ResolvedConfig
+```
+
+The throwing configuration validator — see [Configuration](/sdk/reference/config#resolveconfig).
+
+## Types
+
+```ts
+interface SeoBundle {
+  /** schema.org JSON-LD, e.g. { "@context", "@graph": [Product, BreadcrumbList] } */
+  jsonLd: unknown;
+  title: string;
+  description: string;
+  canonical: string;
+  openGraph: SeoOpenGraph;
+  twitter: SeoTwitter;
+}
+
+interface SeoSiteBundle {
+  /** schema.org JSON-LD { "@context", "@graph": [Organization, WebSite, FAQPage?] } */
+  jsonLd: unknown;
+}
+
+interface SeoOpenGraph {
+  title: string;
+  description: string;
+  /** "product" for product pages, "website" for collection pages */
+  type: "product" | "website";
+  url: string;
+  siteName?: string;
+  image?: string;
+}
+
+interface SeoTwitter {
+  card: "summary" | "summary_large_image";
+  title: string;
+  description: string;
+  image?: string;
+}
+
+/**
+ * A Remix v2 meta descriptor. Loosely typed to avoid a hard @remix-run
+ * dependency; structurally compatible with Remix's MetaDescriptor.
+ */
+type MetaDescriptor = Record<string, unknown>;
+```
+
+`SeoClientConfig` is documented in [Configuration](/sdk/reference/config).

@@ -1,0 +1,43 @@
+---
+title: "Security"
+description: "JSON-LD escaping and the token model."
+icon: "shield-check"
+---
+
+## JSON-LD escaping
+
+Embedding JSON inside a `<script>` tag has a classic injection hazard: if any data field contains `</script>`, the browser terminates the script block there and executes whatever follows as HTML. Product titles, vendor names, and FAQ answers are all merchant- or user-influenced data.
+
+Every component and meta helper shipped in the SDK serializes through `serializeJsonLd`, which escapes every `<` to its JSON unicode form (`\u003c`). The output is still valid JSON — parsers read the escape back as `<` — but it can never close the script tag. This was verified with a hostile payload through a real app: a product name containing
+
+```
+</script><script>alert(1)</script>
+```
+
+renders inertly inside the JSON-LD block; no script breakout, and the structured data remains valid.
+
+**If you write your own script tags** (custom integrations using the core fetch helpers), never `JSON.stringify` straight into the tag:
+
+```ts
+import { fetchProductBundle, serializeJsonLd } from "@agentshop/seo";
+
+const seo = await fetchProductBundle(handle);
+
+// ❌ vulnerable to script breakout
+const bad = `<script type="application/ld+json">${JSON.stringify(seo?.jsonLd)}</script>`;
+
+// ✅ breakout-safe, still valid JSON
+const good = `<script type="application/ld+json">${serializeJsonLd(seo?.jsonLd)}</script>`;
+```
+
+(Remix and Hydrogen users don't need this — the `"script:ld+json"` meta descriptor is serialized safely by the framework.)
+
+## The token model
+
+The SDK uses your **store token** (pixel token) from **SEO → Headless Setup**. It is public by design:
+
+- Read-only — it can only fetch the SEO bundles for one store.
+- The data it exposes (titles, descriptions, product structured data) is exactly what your storefront publishes in HTML anyway.
+- Safe to put in storefront environment variables and ship to edge runtimes.
+
+Your **`ask_` account API key** is a different credential entirely: it grants account-level API access and must stay server-side, never in storefront code, client bundles, or public repositories. The SDK never asks for it.

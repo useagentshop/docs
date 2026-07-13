@@ -1,0 +1,48 @@
+---
+title: "Collection JSON-LD"
+description: "Structured data for collection pages: CollectionPage, ItemList, and breadcrumbs."
+icon: "grid-2"
+---
+
+Collection pages get a schema.org graph containing:
+
+- **`CollectionPage`** — the collection's name, description, and canonical URL.
+- **`ItemList`** — the products in the collection, in order, each linking to its product page.
+- **`BreadcrumbList`** — store → collection trail.
+
+The collection bundle is structurally identical to the product bundle (`SeoBundle`) — same title/description/canonical/Open Graph/Twitter fields — except `openGraph.type` is `"website"` (there is no collection Open Graph type).
+
+## Rendering it (Next.js App Router)
+
+```tsx app/collections/[handle]/page.tsx
+import { createCollectionMetadata, CollectionJsonLd } from "@agentshop/seo/next";
+
+export const generateMetadata = createCollectionMetadata();
+
+export default function Page({ params }: { params: { handle: string } }) {
+  return (
+    <main>
+      <CollectionJsonLd handle={params.handle} />
+    </main>
+  );
+}
+```
+
+`createCollectionMetadata(config?)` and `<CollectionJsonLd handle config? />` behave exactly like their product counterparts: ISR-cached (1 hour), Next 14–16 compatible, and silent on failure.
+
+<Note>
+  Collection helpers currently ship for the **Next.js App Router only**. On the Pages Router, Remix, or Hydrogen, use the core helper directly.
+</Note>
+
+## Other frameworks (core helper)
+
+```ts
+import { fetchCollectionBundle, serializeJsonLd } from "@agentshop/seo";
+
+const seo = await fetchCollectionBundle(handle);
+// seo is a full SeoBundle (or null) — render meta from its fields and
+// embed seo.jsonLd via serializeJsonLd. Never raw JSON.stringify:
+const script = `<script type="application/ld+json">${serializeJsonLd(seo?.jsonLd)}</script>`;
+```
+
+On Hydrogen/Oxygen, pass config explicitly (there's no `process.env`): `fetchCollectionBundle(handle, { token: context.env.AGENTSHOP_TOKEN, baseUrl: context.env.AGENTSHOP_SEO_URL })`.

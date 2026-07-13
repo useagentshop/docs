@@ -1,0 +1,64 @@
+---
+title: "Sitemap"
+description: "Serve your product sitemap from your own domain in every framework."
+icon: "sitemap"
+---
+
+The SDK proxies your AgentShop-generated product sitemap through a route on **your** domain — search engines require sitemaps to be served from the host they cover.
+
+Every sitemap helper follows the same contract:
+
+- **200** with the XML (`Content-Type: application/xml; charset=utf-8`) on success.
+- **502** with an empty body when the sitemap is unavailable (misconfigured env, unreachable endpoint). A sitemap must be real XML or an error — this is the one place the SDK surfaces failure instead of degrading silently.
+
+## Wiring it up
+
+<Tabs>
+  <Tab title="Next.js App Router">
+    ```ts app/sitemap.xml/route.ts
+    import { productSitemapRoute } from "@agentshop/seo/next";
+
+    export const { GET } = productSitemapRoute();
+    ```
+
+    Caches via ISR (`revalidate: 3600`) by default. Note: this route handler sets only the content type — it does not set a `Cache-Control` header itself (Next/your CDN controls response caching).
+  </Tab>
+  <Tab title="Next.js Pages Router">
+    ```ts pages/sitemap.xml.ts
+    import { productSitemapHandler } from "@agentshop/seo/next/pages";
+
+    export default productSitemapHandler();
+    ```
+
+    Sets `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`.
+  </Tab>
+  <Tab title="Remix">
+    ```ts app/routes/[sitemap.xml].ts
+    import { productSitemapLoader } from "@agentshop/seo/remix";
+
+    export const loader = productSitemapLoader();
+    ```
+
+    Sets `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`.
+  </Tab>
+  <Tab title="Hydrogen">
+    ```ts app/routes/[sitemap.xml].ts
+    import { productSitemapLoader } from "@agentshop/seo/hydrogen";
+
+    export const loader = productSitemapLoader();
+    ```
+
+    Resolves your token and endpoint from `context.env` automatically. Sets the same `Cache-Control` as Remix.
+  </Tab>
+</Tabs>
+
+## After deploying
+
+1. Verify `https://yourstore.com/sitemap.xml` returns 200 with XML.
+2. Submit it in Google Search Console (**Indexing → Sitemaps**) and reference it from `robots.txt`:
+
+```txt robots.txt
+Sitemap: https://yourstore.com/sitemap.xml
+```
+
+Getting a 502? See [Troubleshooting](/sdk/troubleshooting) — it's almost always a missing environment variable or an unreachable endpoint.

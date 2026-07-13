@@ -1,0 +1,68 @@
+---
+title: "Troubleshooting & FAQ"
+sidebarTitle: "Troubleshooting"
+description: "Common issues, how to verify your integration, and frequently asked questions."
+icon: "wrench"
+---
+
+## How to verify your integration
+
+Use **View Source** (`Ctrl+U` / `Cmd+Option+U`), not the DevTools Elements panel. DevTools shows the hydrated DOM after JavaScript runs; crawlers see the initial HTML, which is exactly what View Source shows. Then validate structured data with the [Google Rich Results Test](https://search.google.com/test/rich-results) or [validator.schema.org](https://validator.schema.org).
+
+## Common issues
+
+<AccordionGroup>
+  <Accordion title="No SEO tags appear at all">
+    In order of likelihood:
+
+    1. **Environment variables not set.** A missing `AGENTSHOP_SEO_URL` logs a single warning to your server console (`[@agentshop/seo] Missing base URL…`) and skips tags. Check both `AGENTSHOP_SEO_URL` and `AGENTSHOP_TOKEN`.
+    2. **Wrong token.** The endpoint returns 404 for an unknown token, which the SDK treats as "no bundle" — silently. Copy the token again from **SEO → Headless Setup** and test the endpoint directly: `curl {AGENTSHOP_SEO_URL}/{token}/product/{handle}`.
+    3. **Timeout too low.** The default is 3 seconds — fine for the warm CDN, but a cold or local backend can exceed it. Pass `{ timeoutMs: 15000 }` while testing.
+
+    Remember the design: any failure means missing tags, never an error page. Your page rendering fine with no tags *is* the failure signature.
+  </Accordion>
+
+  <Accordion title="og:type is missing on my Next.js App Router pages">
+    By design. Next's typed `Metadata` union doesn't accept `"product"` and throws at runtime, so the App Router adapter omits `og:type` while rendering every other Open Graph tag. The Pages Router, Remix, and Hydrogen adapters do emit `og:type=product`.
+  </Accordion>
+
+  <Accordion title="Works locally, but tags are empty in production">
+    Your deploy platform doesn't have the environment variables. Set `AGENTSHOP_SEO_URL` and `AGENTSHOP_TOKEN` in the platform's environment settings (Vercel project settings, Netlify, etc.) and redeploy.
+
+    **On Hydrogen/Oxygen** there's an extra trap: Oxygen has no `process.env` — env only exists on `context.env`. Set the variables on the Hydrogen storefront environment and make sure custom code never reads `process.env`. See the [Hydrogen guide](/sdk/hydrogen).
+  </Accordion>
+
+  <Accordion title="My sitemap route returns 502">
+    The 502 means the SDK couldn't fetch the sitemap from the endpoint — misconfigured or unreachable. Check the same three things as "no tags appear": env vars, token, timeout. Test directly: `curl {AGENTSHOP_SEO_URL}/{token}/sitemap.xml`.
+  </Accordion>
+
+  <Accordion title="I see the tags in DevTools but a validator says they're missing">
+    You're looking at the hydrated DOM. If tags exist in DevTools but not in View Source, they're being injected client-side (perhaps by another SEO library) and crawlers won't see them. The SDK's helpers are server-rendered — make sure you're using them in server components/loaders, not client effects.
+  </Accordion>
+</AccordionGroup>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="How are multi-variant products represented?">
+    As a schema.org `ProductGroup` with each variant a `Product` under `hasVariant`, each carrying its own `Offer`. Single-variant products are a plain `Product`.
+  </Accordion>
+
+  <Accordion title="Why is there no aggregateRating / review data in the Product JSON-LD?">
+    Ratings and reviews aren't wired into the SEO bundle yet. Emitting fabricated or placeholder rating data would violate Google's structured-data guidelines, so the field is omitted until real review data is connected.
+  </Accordion>
+
+  <Accordion title="Why no Organization sameAs or Offer shipping/returns details?">
+    Deliberately omitted: there's currently no merchant data source for social profiles, shipping policies, or return policies. Structured data is only emitted where real data exists — nothing is synthesized.
+  </Accordion>
+
+  <Accordion title="Which frameworks are supported?">
+    Next.js App Router (full: product, collection, site, sitemap); Next.js Pages Router, Remix v2, and Hydrogen/Oxygen (product + sitemap). Any other server-rendered stack can use the core fetch helpers directly — see the [Core API](/sdk/reference/core).
+  </Accordion>
+
+  <Accordion title="Can the SDK break my page if the endpoint goes down?">
+    No. Every helper returns null/renders nothing on any failure — your page ships without SEO tags rather than erroring. The one deliberate exception is the sitemap route, which returns 502 (a sitemap must be real XML or an error).
+  </Accordion>
+</AccordionGroup>
+
+Still stuck? Test the endpoint directly with your token — the [endpoint reference](/sdk/reference/endpoints) documents the exact URLs and status codes.

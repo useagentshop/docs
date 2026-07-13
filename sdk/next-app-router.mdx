@@ -1,0 +1,98 @@
+---
+title: "Next.js App Router"
+description: "Full integration guide for @agentshop/seo/next — product, collection, site JSON-LD, and sitemap."
+icon: "square-n"
+---
+
+The App Router adapter is the most complete integration: product **and** collection metadata, site-level JSON-LD, and a sitemap route handler. Import everything from `@agentshop/seo/next`.
+
+All helpers read `AGENTSHOP_TOKEN` and `AGENTSHOP_SEO_URL` from the environment, cache with ISR (`revalidate: 3600`) by default, and return nothing on any failure — your page never 500s because of SEO. See [Concepts](/sdk/concepts).
+
+## Product pages
+
+```tsx app/products/[handle]/page.tsx
+import { createProductMetadata, ProductJsonLd } from "@agentshop/seo/next";
+
+export const generateMetadata = createProductMetadata();
+
+export default function Page({ params }: { params: { handle: string } }) {
+  return (
+    <main>
+      {/* …your product UI… */}
+      <ProductJsonLd handle={params.handle} />
+    </main>
+  );
+}
+```
+
+- `createProductMetadata(config?)` is a factory returning a ready `generateMetadata`. Use the factory whenever you pass config — it avoids colliding with Next's positional `generateMetadata(props, parent)` signature. If you need zero config, you can also export `generateProductMetadata` directly.
+- `<ProductJsonLd handle config? />` is an async **server component**: it renders the `<script type="application/ld+json">` with `Product` + `BreadcrumbList`, or nothing if the bundle is unavailable.
+- Both support Next 14 (sync `params`) and Next 15/16 (Promise `params`).
+
+<Warning>
+  On the App Router, `og:type` is deliberately **omitted**: `"product"` isn't in Next's typed `Metadata` Open Graph union and throws at runtime. All other Open Graph tags render normally with `property="og:*"`. The Pages Router, Remix, and Hydrogen adapters do emit `og:type=product` (raw meta tags accept it).
+</Warning>
+
+## Collection pages
+
+```tsx app/collections/[handle]/page.tsx
+import { createCollectionMetadata, CollectionJsonLd } from "@agentshop/seo/next";
+
+export const generateMetadata = createCollectionMetadata();
+
+export default function Page({ params }: { params: { handle: string } }) {
+  return (
+    <main>
+      <CollectionJsonLd handle={params.handle} />
+    </main>
+  );
+}
+```
+
+Renders `CollectionPage` + `ItemList` + breadcrumb JSON-LD, with `og:type=website` semantics in the bundle. See [Collection JSON-LD](/sdk/collection).
+
+## Home page (site-level JSON-LD)
+
+```tsx app/page.tsx
+import { SiteJsonLd } from "@agentshop/seo/next";
+
+export default function Home() {
+  return (
+    <main>
+      {/* …your home UI… */}
+      <SiteJsonLd />
+    </main>
+  );
+}
+```
+
+Renders the `Organization` + `WebSite` (+ `FAQPage` when your store has published FAQs) graph. Inject it **once**, on the home page only. See [Site-level JSON-LD](/sdk/site).
+
+## Sitemap
+
+```ts app/sitemap.xml/route.ts
+import { productSitemapRoute } from "@agentshop/seo/next";
+
+export const { GET } = productSitemapRoute();
+```
+
+Returns 200 with the XML, or 502 with an empty body when the sitemap is unavailable. See [Sitemap](/sdk/sitemap).
+
+## Passing configuration
+
+Every factory and component accepts an optional [`SeoClientConfig`](/sdk/reference/config):
+
+```tsx
+export const generateMetadata = createProductMetadata({
+  timeoutMs: 15000,                              // e.g. cold/local backend
+  fetchOptions: { next: { revalidate: 60 } },    // override the default 3600s ISR
+});
+
+<ProductJsonLd handle={params.handle} config={{ timeoutMs: 15000 }} />
+```
+
+Environment variables (`AGENTSHOP_TOKEN`, `AGENTSHOP_SEO_URL`) are used for anything you don't pass explicitly.
+
+## Full export list
+
+See the [Next.js API reference](/sdk/reference/next) for exact signatures of `generateProductMetadata`, `createProductMetadata`, `generateCollectionMetadata`, `createCollectionMetadata`, `ProductJsonLd`, `CollectionJsonLd`, `SiteJsonLd`, `productSitemapRoute`, and `toNextMetadata`.

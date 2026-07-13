@@ -1,0 +1,78 @@
+---
+title: "Quickstart"
+description: "Add server-rendered product SEO to a Next.js App Router storefront in four steps."
+icon: "rocket"
+---
+
+This quickstart wires product metadata, product JSON-LD, and a sitemap into a Next.js App Router storefront. Other frameworks follow the same shape — see the [Pages Router](/sdk/next-pages-router), [Remix](/sdk/remix), and [Hydrogen](/sdk/hydrogen) guides.
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @agentshop/seo
+    ```
+
+    The package is ESM-only and requires Node 18+. All peer dependencies are optional — nothing extra is pulled in.
+  </Step>
+
+  <Step title="Set your environment variables">
+    Add both variables to `.env.local` (and to your deploy platform's environment):
+
+    ```bash .env.local
+    AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/shopify/seo/public
+    AGENTSHOP_TOKEN=<your store token>
+    ```
+
+    <Note>
+      Find your store token in the AgentShop dashboard under **SEO → Headless Setup**. This is the store's pixel token — public by design and scoped to read-only SEO data for one store. It is **not** the `ask_` account API key.
+    </Note>
+  </Step>
+
+  <Step title="Add two lines to your product page">
+    ```tsx app/products/[handle]/page.tsx
+    import { createProductMetadata, ProductJsonLd } from "@agentshop/seo/next";
+
+    export const generateMetadata = createProductMetadata();
+
+    export default function Page({ params }: { params: { handle: string } }) {
+      return (
+        <main>
+          {/* …your product UI… */}
+          <ProductJsonLd handle={params.handle} />
+        </main>
+      );
+    }
+    ```
+
+    `createProductMetadata()` returns a ready `generateMetadata` that renders the title, meta description, canonical, Open Graph, and Twitter tags. `<ProductJsonLd>` is an async server component that renders the `Product` + `BreadcrumbList` JSON-LD script. Both work with Next 14 (sync `params`) and Next 15/16 (Promise `params`) — no version-specific code needed.
+
+    Optionally add the sitemap route:
+
+    ```ts app/sitemap.xml/route.ts
+    import { productSitemapRoute } from "@agentshop/seo/next";
+
+    export const { GET } = productSitemapRoute();
+    ```
+  </Step>
+
+  <Step title="Verify">
+    Open a product page and use **View Source** (`Ctrl+U` / `Cmd+Option+U`) — not the DevTools Elements panel. DevTools shows the hydrated DOM; crawlers see the initial HTML, which is what View Source shows.
+
+    You should see:
+    - A real `<title>` and `<meta name="description">` from your Shopify SEO fields
+    - `<link rel="canonical">`, `og:*`, and `twitter:*` tags
+    - A `<script type="application/ld+json">` block with `Product` and `BreadcrumbList`
+
+    Then validate the structured data with the [Google Rich Results Test](https://search.google.com/test/rich-results) or [validator.schema.org](https://validator.schema.org).
+  </Step>
+</Steps>
+
+<Tip>
+  The default fetch timeout is 3 seconds — right for the warm, CDN-cached production endpoint. If you're testing against a cold or local backend and tags don't appear, raise it: `createProductMetadata({ timeoutMs: 15000 })`.
+</Tip>
+
+## Where to go next
+
+- Add [collection pages](/sdk/collection) and the [site-level JSON-LD](/sdk/site) on your home page (App Router).
+- Read [Concepts](/sdk/concepts) for how bundles, caching, and graceful degradation work.
+- Something not rendering? See [Troubleshooting](/sdk/troubleshooting).

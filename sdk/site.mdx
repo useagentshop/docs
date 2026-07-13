@@ -1,0 +1,51 @@
+---
+title: "Site-level JSON-LD"
+description: "Organization, WebSite, and FAQPage structured data for your home page."
+icon: "house"
+---
+
+The site bundle carries your store-wide schema.org graph:
+
+- **`Organization`** — your store's name, URL, and logo.
+- **`WebSite`** — with a `SearchAction`, enabling the sitelinks search box.
+- **`FAQPage`** — included automatically when your store has published FAQs in AgentShop.
+
+Unlike product and collection bundles, the site bundle is **JSON-LD only** (`SeoSiteBundle = { jsonLd }`). It carries no title or meta tags — your home page owns its own meta.
+
+<Warning>
+  Inject the site graph **exactly once, on the home page**. Google discourages repeating the same `FAQPage`/site-level graph across many pages.
+</Warning>
+
+## Rendering it (Next.js App Router)
+
+```tsx app/page.tsx
+import { SiteJsonLd } from "@agentshop/seo/next";
+
+export default function Home() {
+  return (
+    <main>
+      {/* …your home UI… */}
+      <SiteJsonLd />
+    </main>
+  );
+}
+```
+
+`<SiteJsonLd config? />` is an async server component: it renders the escaped `<script type="application/ld+json">` or nothing if the bundle is unavailable. ISR-cached for 1 hour by default.
+
+<Note>
+  The `<SiteJsonLd>` component currently ships for the **Next.js App Router only**. Elsewhere, use the core helper.
+</Note>
+
+## Other frameworks (core helper)
+
+```ts
+import { fetchSiteBundle, serializeJsonLd } from "@agentshop/seo";
+
+const site = await fetchSiteBundle();
+const script = site
+  ? `<script type="application/ld+json">${serializeJsonLd(site.jsonLd)}</script>`
+  : "";
+```
+
+On Hydrogen/Oxygen, pass config explicitly from `context.env` (there's no `process.env`).

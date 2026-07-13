@@ -1,0 +1,58 @@
+---
+title: "Remix"
+description: "Integrate product SEO and a sitemap with @agentshop/seo/remix."
+icon: "diamond"
+---
+
+The Remix adapter covers **product pages and the sitemap** for Remix v2. (Collection and site-level helpers are currently App Router only — use the [core fetch helpers](/sdk/reference/core) if you need them here.) Import from `@agentshop/seo/remix`.
+
+<Note>
+  On Shopify Hydrogen/Oxygen, use [`@agentshop/seo/hydrogen`](/sdk/hydrogen) instead — Oxygen has no `process.env`, and the Hydrogen adapter reads your environment from `context.env`.
+</Note>
+
+## Product routes
+
+Load the bundle in your loader, then export the ready-made `meta` function:
+
+```tsx app/routes/products.$handle.tsx
+import { json } from "@remix-run/node";
+import { loadProductSeo, agentshopProductMeta } from "@agentshop/seo/remix";
+
+export async function loader({ params }) {
+  const seo = await loadProductSeo(params.handle!);
+  // merge with your own loader data:
+  return json({ ...seo /*, product, reviews, … */ });
+}
+
+export const meta = agentshopProductMeta;
+```
+
+- `loadProductSeo(handle, config?)` returns `{ agentshopSeo: SeoBundle | null }` — spread it into your loader data under that exact key.
+- `agentshopProductMeta(args)` is a Remix v2 `meta` function that reads `data.agentshopSeo` and emits the title, description, canonical, Open Graph (including `og:type=product`), Twitter tags, and the JSON-LD via a `"script:ld+json"` descriptor — Remix serializes and escapes it for you. If the bundle is `null`, it returns an empty array and your route renders without tags.
+
+If you have your own `meta` function, compose instead of replacing:
+
+```tsx
+import { buildProductMetaDescriptors } from "@agentshop/seo";
+
+export const meta = ({ data }) => [
+  ...yourOwnDescriptors,
+  ...buildProductMetaDescriptors(data?.agentshopSeo),
+];
+```
+
+## Sitemap
+
+Create a resource route:
+
+```ts app/routes/[sitemap.xml].ts
+import { productSitemapLoader } from "@agentshop/seo/remix";
+
+export const loader = productSitemapLoader();
+```
+
+The loader returns 200 XML with `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`, or 502 with an empty body when the sitemap is unavailable.
+
+## Configuration
+
+All three exports accept an optional [`SeoClientConfig`](/sdk/reference/config); `AGENTSHOP_TOKEN` and `AGENTSHOP_SEO_URL` are read from `process.env` for anything you don't pass. All helpers follow the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract).
