@@ -4,9 +4,9 @@
   "name": "AgentShop",
   "description": "AgentShop documentation — headless SEO, structured data, and AI commerce readiness for Shopify storefronts.",
   "colors": {
-    "primary": "#0E4D92",
-    "light": "#3B82F6",
-    "dark": "#0A3D7A"
+    "primary": "#15683C",
+    "light": "#1FD8A4",
+    "dark": "#0C3B22"
   },
   "favicon": "/favicon.png",
   "navigation": {
