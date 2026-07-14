@@ -40,11 +40,7 @@ function buildProductMetaDescriptors(seo: SeoBundle | null | undefined): MetaDes
 
 Builds the Remix/Hydrogen v2 `meta` descriptor array from a bundle: title, description, canonical, Open Graph (including `og:type=product`), Twitter tags, and the JSON-LD via a `"script:ld+json"` descriptor. Returns `[]` for a `null` bundle.
 
-```ts
-function toNextMetadata(seo: SeoBundle | null | undefined): Metadata
-```
-
-Maps a bundle to a Next.js `Metadata` object. `og:type: "product"` is deliberately omitted — it isn't in Next's `OpenGraph` type union and throws at runtime — but the remaining Open Graph tags still render with `property="og:*"`. (Also re-exported from `@agentshop/seo/next`.)
+For the bundle → Next.js `Metadata` mapper, use `toNextMetadata`. It is **not** a core export — it ships only from [`@agentshop/seo/next`](/sdk/reference/next), so non-Next consumers (Remix, Hydrogen, plain Node) aren't forced to install `next` to typecheck.
 
 ## Serialization
 

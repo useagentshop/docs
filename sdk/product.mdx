@@ -9,7 +9,7 @@ Product pages get a schema.org graph containing:
 - **`Product`** (or **`ProductGroup`** with `hasVariant` for multi-variant products) — name, description, images, brand, and an **`Offer`** with price, currency, and availability from your live Shopify data.
 - **`BreadcrumbList`** — store → collection → product trail.
 
-A typical rendered block is ~2.2 KB of valid JSON-LD, served from your Shopify SEO fields and product data. Multi-variant products are modeled the schema.org way: one `ProductGroup` with each variant as a `Product` under `hasVariant`, each carrying its own offer.
+A typical rendered block is ~2.2 KB of valid JSON-LD, served from your Shopify SEO fields and product data. Multi-variant products are modeled the schema.org way: one `ProductGroup` with each variant as a `Product` under `hasVariant`, each carrying its own offer. Only the **first 50 variants** are included in `hasVariant` (to keep the bundle small); products with a larger variant matrix are truncated to 50.
 
 ## Rendering it
 
