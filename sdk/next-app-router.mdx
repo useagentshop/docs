@@ -6,7 +6,7 @@ icon: "square-n"
 
 The App Router adapter is the most complete integration: product **and** collection metadata, site-level JSON-LD, and a sitemap route handler. Import everything from `@agentshop/seo/next`.
 
-All helpers read `AGENTSHOP_TOKEN` and `AGENTSHOP_SEO_URL` from the environment, cache with ISR (`revalidate: 3600`) by default, and return nothing on any failure — your page never 500s because of SEO. See [Concepts](/sdk/concepts).
+All helpers read `AGENTSHOP_API_KEY` and `AGENTSHOP_SEO_URL` from the environment, cache with ISR (`revalidate: 3600`) by default, and return nothing on any failure — your page never 500s because of SEO. See [Concepts](/sdk/concepts).
 
 ## Product pages
 
@@ -91,7 +91,7 @@ export const generateMetadata = createProductMetadata({
 <ProductJsonLd handle={params.handle} config={{ timeoutMs: 15000 }} />
 ```
 
-Environment variables (`AGENTSHOP_TOKEN`, `AGENTSHOP_SEO_URL`) are used for anything you don't pass explicitly.
+Environment variables (`AGENTSHOP_API_KEY`, `AGENTSHOP_SEO_URL`) are used for anything you don't pass explicitly. `AGENTSHOP_API_KEY` is a **secret** — keep it in a server-side env var, never a `NEXT_PUBLIC_*` one. Every helper here runs on the server, so the key never reaches the browser.
 
 ## Full export list
 

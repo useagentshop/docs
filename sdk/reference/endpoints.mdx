@@ -1,29 +1,38 @@
 ---
 title: "Endpoint reference"
-description: "The four public SEO endpoints the SDK calls: URLs, response shapes, caching, and status codes."
+description: "The four headless-SEO endpoints the SDK calls: auth, URLs, response shapes, caching, and status codes."
 icon: "globe"
 ---
 
-The SDK is a thin client over four public, token-scoped endpoints. You can call them directly from any stack — they're plain HTTPS GET, no auth headers.
+The SDK is a thin client over four API-key-authenticated endpoints. You can call them directly from any server-side stack — they're plain HTTPS GET.
 
-Base URL: `https://api.useagentshop.com/api/shopify/seo/public`
-Token: your store's pixel token (`{token}` below) from **SEO → Headless Setup**.
+Base URL: `https://api.useagentshop.com/api/v1/headless-seo`
+
+## Authentication
+
+Every request must carry your store's API key. The key resolves to exactly one store, so there's no store id or token in the path.
+
+```
+Authorization: Bearer ask_xxxxxxxx…
+```
+
+The backend also accepts the key in an `x-api-key: ask_xxxxxxxx…` header if you prefer. The key is a **secret** — only call these endpoints from a server (never a browser). Get and rotate it in the dashboard under **Settings → API Keys**. See [Security](/sdk/security).
 
 ## Endpoints
 
-### `GET {base}/{token}/product/{handle}`
+### `GET {base}/product/{handle}`
 
 Returns the product `SeoBundle` for a product handle (URL-encoded).
 
-### `GET {base}/{token}/collection/{handle}`
+### `GET {base}/collection/{handle}`
 
 Returns the collection `SeoBundle`. Same shape as a product bundle; `openGraph.type` is `"website"`.
 
-### `GET {base}/{token}/site.json`
+### `GET {base}/site`
 
 Returns the `SeoSiteBundle` — `{ jsonLd }` only, the site-level `Organization` + `WebSite` (+ `FAQPage`) graph.
 
-### `GET {base}/{token}/sitemap.xml`
+### `GET {base}/sitemap.xml`
 
 Returns the product sitemap as XML (`application/xml`).
 
@@ -58,18 +67,24 @@ Returns the product sitemap as XML (`application/xml`).
 All responses are served with:
 
 ```
-Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+Cache-Control: private, max-age=3600, stale-while-revalidate=86400
 X-Cache: HIT | MISS
 ```
 
-Cached for 1 hour at the CDN, served stale for up to 24 hours while revalidating. `X-Cache` tells you whether the response came from cache.
+The cache is `private` — because each response is scoped to a store by a secret key, it must not be stored in a shared or CDN cache. Instead, your framework's own cache does the work (the Next.js helpers add `revalidate: 3600` ISR by default). `X-Cache` tells you whether the backend served the bundle from its cache.
+
+## Rate limits
+
+Requests are rate-limited **per key** (i.e. per store) to **300 requests per minute**. Over the limit returns `429`. Standard `RateLimit-*` headers are included on every response.
 
 ## Status codes
 
 | Code | Meaning |
 |---|---|
 | `200` | Bundle / XML returned |
-| `404` | Unknown token, or unknown product/collection handle |
+| `401` | Missing or invalid API key (also a key rotated out more than 24h ago) |
+| `404` | Unknown product or collection handle |
+| `429` | Rate limit exceeded (300/min per key) |
 | `502` | Upstream failure generating the bundle |
 
-The SDK treats any non-2xx as a `null` bundle (see the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract)); if you call the endpoints directly, handle 404/502 the same way — render the page without SEO tags.
+The SDK treats any non-2xx as a `null` bundle (see the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract)); if you call the endpoints directly, handle non-200 the same way — render the page without SEO tags (except the sitemap route, which should surface the error).

@@ -7,7 +7,7 @@ icon: "bolt"
 The Hydrogen adapter covers **product pages and the sitemap** for Hydrogen storefronts on Oxygen. (Collection and site-level helpers are currently App Router only — use the [core fetch helpers](/sdk/reference/core) with an explicit config if you need them here.) Import from `@agentshop/seo/hydrogen`.
 
 <Warning>
-  Oxygen (workerd) has **no `process.env`** — environment variables only exist on `context.env`. That's why this adapter exists: its helpers take the Oxygen `context` and resolve `AGENTSHOP_TOKEN` / `AGENTSHOP_SEO_URL` from `context.env` automatically. Any custom integration code you write on Oxygen must read from `context.env` too, never `process.env`.
+  Oxygen (workerd) has **no `process.env`** — environment variables only exist on `context.env`. That's why this adapter exists: its helpers take the Oxygen `context` and resolve `AGENTSHOP_API_KEY` / `AGENTSHOP_SEO_URL` from `context.env` automatically. Any custom integration code you write on Oxygen must read from `context.env` too, never `process.env`.
 </Warning>
 
 ## Setup
@@ -15,8 +15,8 @@ The Hydrogen adapter covers **product pages and the sitemap** for Hydrogen store
 Add both variables to your storefront environment (Shopify admin → Hydrogen storefront → environment variables, and `.env` for local `shopify hydrogen dev`):
 
 ```bash
-AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/shopify/seo/public
-AGENTSHOP_TOKEN=<your store token from Dashboard → SEO → Headless Setup>
+AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/v1/headless-seo
+AGENTSHOP_API_KEY=<your store API key from Dashboard → Settings → API Keys>
 ```
 
 ## Product routes
@@ -50,7 +50,7 @@ Unlike the Remix version, this loader reads `args.context` to resolve your envir
 
 This is almost always environment resolution. Check that:
 
-1. `AGENTSHOP_TOKEN` and `AGENTSHOP_SEO_URL` are set on the **Hydrogen storefront environment** (not just your local `.env`).
+1. `AGENTSHOP_API_KEY` and `AGENTSHOP_SEO_URL` are set on the **Hydrogen storefront environment** (not just your local `.env`).
 2. No custom code reads `process.env` — on Oxygen it doesn't exist.
 
 All helpers follow the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract): misconfiguration means missing tags, never a crash.

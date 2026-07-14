@@ -45,4 +45,4 @@ const seo = await fetchCollectionBundle(handle);
 const script = `<script type="application/ld+json">${serializeJsonLd(seo?.jsonLd)}</script>`;
 ```
 
-On Hydrogen/Oxygen, pass config explicitly (there's no `process.env`): `fetchCollectionBundle(handle, { token: context.env.AGENTSHOP_TOKEN, baseUrl: context.env.AGENTSHOP_SEO_URL })`.
+On Hydrogen/Oxygen, pass config explicitly (there's no `process.env`): `fetchCollectionBundle(handle, { apiKey: context.env.AGENTSHOP_API_KEY, baseUrl: context.env.AGENTSHOP_SEO_URL })`.

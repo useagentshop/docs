@@ -1,6 +1,6 @@
 ---
 title: "Concepts"
-description: "Bundles, the store token, caching, and the never-throw contract."
+description: "Bundles, the store API key, caching, and the never-throw contract."
 icon: "lightbulb"
 ---
 
@@ -25,19 +25,26 @@ The SDK works with two bundle shapes, both plain JSON returned by the AgentShop 
 
 See the [core API reference](/sdk/reference/core) for the full type shapes.
 
-## The store token
+## The store API key
 
-Every request is scoped by your store token (also called the pixel token), found in the dashboard under **SEO → Headless Setup**.
+Every request is authenticated by your store **API key** (`ask_…`), sent as `Authorization: Bearer`. Generate and rotate it in the dashboard under **Settings → API Keys**.
 
-- It is **public by design**: read-only, scoped to one store's SEO data, safe to ship in storefront code and environment variables.
-- It is **not** your `ask_` account API key. The account API key grants account-level access and must stay server-side, out of storefront code entirely. When in doubt: the SDK only ever takes the store token.
+- It's a **secret** — server-side only, never in a client bundle or the browser. See [Security](/sdk/security).
+- It resolves to **exactly one store**, so there's no store id in the endpoint path. A merchant with several connected stores gets one key per store.
+- **Rotation** is safe: after you rotate, the previous key keeps working for 24 hours so you can redeploy without downtime.
 
 ## Caching
 
-Two layers of caching keep the endpoint off your critical path:
+Because each response is scoped to a store by a secret key, the endpoint marks it **private** — it can't be stored in a shared or CDN cache. Your framework's own cache carries the load instead:
 
-1. **Endpoint CDN**: responses are served with `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` — cached for 1 hour, served stale for up to 24 hours while revalidating. The `X-Cache: HIT|MISS` response header tells you which happened.
-2. **Framework cache**: the Next.js helpers additionally wrap every fetch with `{ next: { revalidate: 3600 } }` (ISR, 1 hour) by default.
+1. **Endpoint headers**: `Cache-Control: private, max-age=3600, stale-while-revalidate=86400`, plus an `X-Cache: HIT|MISS` header telling you whether the backend served the bundle from its own cache.
+2. **Framework cache** (the primary layer): the Next.js helpers wrap every fetch with `{ next: { revalidate: 3600 } }` (ISR, 1 hour) by default, so a page's bundle is fetched once per revalidation window, not per request.
+
+Override the framework layer via `fetchOptions`:
+
+```ts
+createProductMetadata({ fetchOptions: { next: { revalidate: 60 } } });
+```
 
 Override the framework layer via `fetchOptions`:
 
@@ -47,7 +54,7 @@ createProductMetadata({ fetchOptions: { next: { revalidate: 60 } } });
 
 ## Graceful degradation (the never-throw contract)
 
-Every fetch helper returns `null` on **any** failure — missing configuration, bad token, 404, timeout, network error. Components render nothing, metadata helpers return an empty object, and your page ships without SEO tags rather than crashing.
+Every fetch helper returns `null` on **any** failure — missing configuration, a missing or invalid key (401), 404, timeout, network error. Components render nothing, metadata helpers return an empty object, and your page ships without SEO tags rather than crashing.
 
 - A missing base URL logs a single `console.warn` (once per process) and skips tags.
 - A misconfigured store renders perfectly fine — pages return 200, just without SEO tags. The only exception is the sitemap route, which returns a 502 with an empty body when the bundle is unavailable (a sitemap must be real XML or an error).

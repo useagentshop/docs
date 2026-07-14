@@ -17,10 +17,10 @@ AI crawlers — GPTBot, ClaudeBot, PerplexityBot — do not execute JavaScript. 
 
 ## How it works
 
-Your storefront calls the AgentShop SEO endpoint at render time, authenticated by your store token, and receives a ready-to-render bundle. Responses are CDN-cached, and the SDK adds framework-level caching on top, so the endpoint adds negligible latency to your pages.
+Your storefront calls the AgentShop headless-SEO endpoint at render time — on the server, authenticated by your store API key — and receives a ready-to-render bundle. The SDK caches with your framework (Next.js ISR by default), so the endpoint adds negligible latency to your pages.
 
 ```
-Your storefront (SSR) → AgentShop SEO endpoint (token-scoped, CDN-cached) → tags in initial HTML
+Your storefront (SSR) → AgentShop headless-SEO endpoint (API-key authenticated) → tags in initial HTML
 ```
 
 If the endpoint is ever unreachable or misconfigured, every helper returns `null` and your page renders without SEO tags — never a 500. See [Concepts](/sdk/concepts) for the full graceful-degradation contract.
@@ -57,7 +57,7 @@ The core package (`@agentshop/seo`) exposes the raw fetch helpers for any other 
     Product SEO on a Next.js App Router storefront in four steps.
   </Card>
   <Card title="Concepts" icon="lightbulb" href="/sdk/concepts">
-    Bundles, the store token, caching, and graceful degradation.
+    Bundles, the store API key, caching, and graceful degradation.
   </Card>
   <Card title="Framework guides" icon="layer-group" href="/sdk/next-app-router">
     Next.js, Remix, and Hydrogen integration guides.

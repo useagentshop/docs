@@ -1,6 +1,6 @@
 ---
 title: "Security"
-description: "JSON-LD escaping and the token model."
+description: "JSON-LD escaping and the API key model."
 icon: "shield-check"
 ---
 
@@ -32,12 +32,16 @@ const good = `<script type="application/ld+json">${serializeJsonLd(seo?.jsonLd)}
 
 (Remix and Hydrogen users don't need this — the `"script:ld+json"` meta descriptor is serialized safely by the framework.)
 
-## The token model
+## The API key model
 
-The SDK uses your **store token** (pixel token) from **SEO → Headless Setup**. It is public by design:
+The SDK authenticates with your **store API key** (`ask_…`), sent as `Authorization: Bearer`. Unlike a public tag, this key is a **secret** — treat it like a password:
 
-- Read-only — it can only fetch the SEO bundles for one store.
-- The data it exposes (titles, descriptions, product structured data) is exactly what your storefront publishes in HTML anyway.
-- Safe to put in storefront environment variables and ship to edge runtimes.
+- **Server-side only.** Use it in environment variables read on the server: `generateMetadata`, async server components, Remix/Hydrogen loaders, and route handlers all run on the server, so the shipped SDK never exposes it. Never put it in a `NEXT_PUBLIC_*` (or any client-exposed) variable, a client component, or a committed file.
+- **Never in the browser or a client bundle.** Anyone with the key can read your store's SEO bundles. If it leaks (a public repo, a client bundle), rotate it immediately.
+- **One key per store.** A key resolves to exactly one connected store; a merchant with several stores has one key each.
 
-Your **`ask_` account API key** is a different credential entirely: it grants account-level API access and must stay server-side, never in storefront code, client bundles, or public repositories. The SDK never asks for it.
+This is also why the endpoints send `Cache-Control: private` — a per-store secret can't be stored in a shared or CDN cache.
+
+### Rotating a key
+
+Rotate a key any time in the dashboard under **Settings → API Keys** (this is also where you generate it the first time). After a rotation the **previous key keeps working for 24 hours**, so you can roll the new key out to your deployments without downtime. Update your `AGENTSHOP_API_KEY` env var and redeploy within that window.

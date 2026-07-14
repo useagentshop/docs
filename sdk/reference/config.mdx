@@ -8,23 +8,23 @@ Every fetch helper, component, factory, and route in the SDK accepts an optional
 
 ```ts
 interface SeoClientConfig {
-  token?: string;
+  apiKey?: string;
   baseUrl?: string;
   timeoutMs?: number;
   fetchOptions?: Record<string, unknown>;
 }
 ```
 
-<ResponseField name="token" type="string">
-  Your store's pixel token from the dashboard under **SEO → Headless Setup**. Falls back to `process.env.AGENTSHOP_TOKEN` (on Hydrogen/Oxygen: `context.env.AGENTSHOP_TOKEN`, resolved by the adapter). This is **not** the `ask_` account API key — see [Security](/sdk/security).
+<ResponseField name="apiKey" type="string">
+  Your store's API key (`ask_…`), from the dashboard under **Settings → API Keys**. Sent as `Authorization: Bearer`. Falls back to `process.env.AGENTSHOP_API_KEY` (on Hydrogen/Oxygen: `context.env.AGENTSHOP_API_KEY`, resolved by the adapter). It's a **secret** — server-side only, never in a client bundle. See [Security](/sdk/security).
 </ResponseField>
 
 <ResponseField name="baseUrl" type="string">
-  Base URL of the AgentShop SEO endpoint, e.g. `https://api.useagentshop.com/api/shopify/seo/public`. Falls back to `process.env.AGENTSHOP_SEO_URL` (Hydrogen: `context.env`). Trailing slashes are stripped.
+  Base URL of the AgentShop headless-SEO endpoint, e.g. `https://api.useagentshop.com/api/v1/headless-seo`. Falls back to `process.env.AGENTSHOP_SEO_URL` (Hydrogen: `context.env`). Trailing slashes are stripped.
 </ResponseField>
 
 <ResponseField name="timeoutMs" type="number" default="3000">
-  Per-request fetch timeout in milliseconds, applied via `AbortSignal.timeout` (feature-detected). The 3-second default suits the warm CDN-cached endpoint; raise it (e.g. `15000`) when testing against a cold or local backend.
+  Per-request fetch timeout in milliseconds, applied via `AbortSignal.timeout` (feature-detected). The 3-second default suits the warm endpoint; raise it (e.g. `15000`) when testing against a cold or local backend.
 </ResponseField>
 
 <ResponseField name="fetchOptions" type="Record<string, unknown>">
@@ -34,25 +34,27 @@ interface SeoClientConfig {
 ## Environment variables
 
 ```bash
-AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/shopify/seo/public
-AGENTSHOP_TOKEN=<your store token>
+AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/v1/headless-seo
+AGENTSHOP_API_KEY=<your store API key from Dashboard → Settings → API Keys>
 ```
 
-Set both locally **and** on your deploy platform (Vercel, Oxygen storefront environment, etc.) — "works locally, empty in production" is almost always a missing deploy-time variable.
+Set both locally **and** on your deploy platform (Vercel, Oxygen storefront environment, etc.) — "works locally, empty in production" is almost always a missing deploy-time variable. Because `AGENTSHOP_API_KEY` is a secret, use a server-side/secret env var — never a `NEXT_PUBLIC_*` (or otherwise client-exposed) variable.
 
 ## Failure behavior
 
-The fetch helpers never throw. On any failure — missing config, bad token, 404, timeout, network error — they return `null`, and a missing base URL logs a single warning:
+The fetch helpers never throw. On any failure — missing config, missing/invalid key (401), 404, timeout, network error — they return `null`. A missing base URL additionally logs a single warning:
 
 ```
 [@agentshop/seo] Missing base URL — set AGENTSHOP_SEO_URL or pass { baseUrl }. SEO tags will be skipped.
 ```
 
+(A missing API key doesn't warn — the helpers just return `null`.)
+
 ### `resolveConfig`
 
 ```ts
 function resolveConfig(cfg?: SeoClientConfig): {
-  token: string;
+  apiKey: string;
   baseUrl: string;
   timeoutMs: number;
   fetchOptions: Record<string, unknown>;

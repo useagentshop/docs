@@ -19,12 +19,12 @@ This quickstart wires product metadata, product JSON-LD, and a sitemap into a Ne
     Add both variables to `.env.local` (and to your deploy platform's environment):
 
     ```bash .env.local
-    AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/shopify/seo/public
-    AGENTSHOP_TOKEN=<your store token>
+    AGENTSHOP_SEO_URL=https://api.useagentshop.com/api/v1/headless-seo
+    AGENTSHOP_API_KEY=<your store API key>
     ```
 
     <Note>
-      Find your store token in the AgentShop dashboard under **SEO → Headless Setup**. This is the store's pixel token — public by design and scoped to read-only SEO data for one store. It is **not** the `ask_` account API key.
+      Find your store API key (`ask_…`) in the AgentShop dashboard under **Settings → API Keys** — one key per store. It's a **secret**: keep it in a server-side env var only (never a `NEXT_PUBLIC_*` variable or client code). The SDK uses it only on the server, so nothing is exposed to the browser.
     </Note>
   </Step>
 
@@ -68,7 +68,7 @@ This quickstart wires product metadata, product JSON-LD, and a sitemap into a Ne
 </Steps>
 
 <Tip>
-  The default fetch timeout is 3 seconds — right for the warm, CDN-cached production endpoint. If you're testing against a cold or local backend and tags don't appear, raise it: `createProductMetadata({ timeoutMs: 15000 })`.
+  The default fetch timeout is 3 seconds — right for the warm production endpoint. If you're testing against a cold or local backend and tags don't appear, raise it: `createProductMetadata({ timeoutMs: 15000 })`.
 </Tip>
 
 ## Where to go next

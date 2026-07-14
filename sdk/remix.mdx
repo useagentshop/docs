@@ -55,4 +55,4 @@ The loader returns 200 XML with `Cache-Control: public, max-age=3600, stale-whil
 
 ## Configuration
 
-All three exports accept an optional [`SeoClientConfig`](/sdk/reference/config); `AGENTSHOP_TOKEN` and `AGENTSHOP_SEO_URL` are read from `process.env` for anything you don't pass. All helpers follow the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract).
+All three exports accept an optional [`SeoClientConfig`](/sdk/reference/config); `AGENTSHOP_API_KEY` and `AGENTSHOP_SEO_URL` are read from `process.env` for anything you don't pass. `AGENTSHOP_API_KEY` is a **secret** — it's only read in loaders (server-side), so keep it in a server-side env var, never one exposed to the browser. All helpers follow the [never-throw contract](/sdk/concepts#graceful-degradation-the-never-throw-contract).
